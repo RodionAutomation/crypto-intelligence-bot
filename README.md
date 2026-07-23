@@ -153,19 +153,6 @@ The project uses a dedicated Error Trigger workflow that:
 
 ---
 
-# 🔒 Security
-
-Before publishing, all sensitive information has been removed and replaced with placeholders, including:
-
-- API Keys
-- Telegram Tokens
-- Spreadsheet IDs
-- Webhook IDs
-- OAuth Credentials
-- User-specific identifiers
-
----
-
 # 🚀 Future Improvements
 
 - Portfolio tracking
