@@ -126,7 +126,7 @@ Crypto-Intelligence-Bot/
 
 # 📸 Workflow Architecture
 
-![Workflow Architecture](docs/architecture.png)
+![Workflow Architecture](docs/architecture(main).png)
 
 ---
 
