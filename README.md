@@ -71,7 +71,8 @@ The project is split into multiple workflows for easier maintenance.
 - CoinGecko API
 
 ### Storage
-- Google Sheets
+- Google Sheets(
+A temporary solution instead of PostgreSQL)
 
 ### n8n Nodes
 - HTTP Request
