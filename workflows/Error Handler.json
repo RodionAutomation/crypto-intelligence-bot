@@ -1,0 +1,256 @@
+{
+  "name": "Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "be314cf5-d871-4095-96cd-7a852ecbfcc4",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const execution = $json.execution ?? {};\nconst error = execution.error ?? {};\nconst workflow = $json.workflow ?? {};\n\nconst ignoredPatterns = [\n  \"blocked by the user\",\n  \"chat not found\",\n  \"user is deactivated\"\n];\n\nconst searchableText = [\n  error.message,\n  error.description,\n  ...(error.messages ?? [])\n]\n.filter(Boolean)\n.join(\" \")\n.toLowerCase();\n\nconst ignored = ignoredPatterns.some(pattern =>\n  searchableText.includes(pattern.toLowerCase())\n);\n\nreturn [\n{\njson:{\n\ntimestamp: new Date().toLocaleString('uk-UA', {\n    timeZone: 'Europe/Kyiv'\n}),\n\nworkflow: workflow.name ?? \"Unknown\",\n\nnode:\nerror.node?.name ??\nexecution.lastNodeExecuted ??\n\"Unknown\",\n\nlevel: error.level ?? \"error\",\n\ntype: error.name ?? \"Unknown\",\n\nhttp_code: error.httpCode ?? \"-\",\n\ndescription:\nerror.description ??\n\"-\",\n\nmessage:\nerror.message ??\n\"Unknown error\",\n\nexecution_id:\nexecution.id ?? \"-\",\n\nexecution_url:\nexecution.url ?? \"-\",\n\nignored\n\n}\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "6ac7718b-f3ee-4a6c-87bc-4be9285dfa8f",
+      "name": "📋 Prepare Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ef13b387-7cb4-42bf-9312-f33f0cf9c747",
+              "leftValue": "={{ $json.ignored }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "27f04c9b-70ae-43b9-9790-6e0876b5f3a5",
+      "name": "Ignore error?"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=🚨 Smart Crypto Bot\n\n❌ Error detected\n\n📂 Workflow:\n{{ $json.workflow }}\n\n📍 Node:\n{{ $json.node }}\n\n⚠️ Level:\n{{ $json.level }}\n\n🧩 Type:\n{{ $json.type }}\n\n🌐 HTTP:\n{{ $json.http_code }}\n\n📝 Description:\n{{ $json.description }}\n\n💬 Message:\n{{ $json.message }}\n\n🆔 Execution:\n{{ $json.execution_id }}\n\n🔗 Execution URL:\n{{ $json.execution_url }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        96
+      ],
+      "id": "7e3d9743-ca23-42c5-9734-11f5366a74c2",
+      "name": "Send an error message",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Error Log",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $('Ignore error?').item.json.timestamp }}",
+            "Workflow": "={{ $('Ignore error?').item.json.workflow }}",
+            "URL": "={{ $('Ignore error?').item.json.execution_url }}",
+            "Node": "={{ $('Ignore error?').item.json.node }}",
+            "Error Message": "={{ $('Ignore error?').item.json.message }}",
+            "Level": "={{ $('Ignore error?').item.json.level }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Workflow",
+              "displayName": "Workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Node",
+              "displayName": "Node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error Message",
+              "displayName": "Error Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Level",
+              "displayName": "Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        832,
+        96
+      ],
+      "id": "b20bfb26-5471-4b33-984f-460f1e6361bc",
+      "name": "Append error info",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "📋 Prepare Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Prepare Error": {
+      "main": [
+        [
+          {
+            "node": "Ignore error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ignore error?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send an error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an error message": {
+      "main": [
+        [
+          {
+            "node": "Append error info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "YOUR_VERSION_ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "YOUR_WORKFLOW_ID",
+  "tags": []
+}

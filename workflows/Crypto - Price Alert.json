@@ -1,0 +1,356 @@
+{
+  "name": "Crypto - Price Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        48
+      ],
+      "id": "81393895-6d76-42cd-8180-960eeab6cd4d",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        48
+      ],
+      "id": "11fe5f2a-33c7-4c11-89fd-d0f784113e5d",
+      "name": "Get Alerts",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "04b44aa3-70d5-40c3-8435-702a8e6a2b2d",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        48
+      ],
+      "id": "23b1d4fa-24f2-4d29-96e4-bf50b18d0e76",
+      "name": "Are There Any Active Alerts?"
+    },
+    {
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        704,
+        -16
+      ],
+      "id": "53506dbe-46dd-41b0-958b-b91124321994",
+      "name": "Get Prices",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const alerts = $('Get Alerts').all();\n\nconst prices = $('Get Prices').first().json;\n\nconst coinMap = {\n    btc: \"bitcoin\",\n    eth: \"ethereum\",\n    sol: \"solana\"\n};\n\nconst triggered = [];\n\nfor (const item of alerts) {\n\n    const alert = item.json;\n\n    const coin = coinMap[alert.coin?.toLowerCase()];\n\n    if (!coin) continue;\n\n    const currentPrice = Number(prices[coin].usd);\n    const targetPrice = Number(alert.target_price);\n\n    let fire = false;\n\n    switch (alert.operator) {\n\n        case \">\":\n            fire = currentPrice > targetPrice;\n            break;\n\n        case \"<\":\n            fire = currentPrice < targetPrice;\n            break;\n\n        case \">=\":\n            fire = currentPrice >= targetPrice;\n            break;\n\n        case \"<=\":\n            fire = currentPrice <= targetPrice;\n            break;\n\n        case \"=\":\n        case \"==\":\n            fire = currentPrice === targetPrice;\n            break;\n    }\n\n    if (fire) {\n\n        triggered.push({\n            json: {\n\n                alert_id: alert.alert_id,\n\n                user_id: alert.user_id,\n\n                coin: alert.coin,\n\n                operator: alert.operator,\n\n                target_price: targetPrice,\n\n                current_price: currentPrice,\n\n                created_at: alert.created_at,\n\n                row_number: alert.row_number\n            }\n        });\n\n    }\n\n}\n\nreturn triggered;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -16
+      ],
+      "id": "7432c0eb-0867-4a94-9b9e-21db8bbcceca",
+      "name": "Check For Activation"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Check For Activation').item.json.user_id }}",
+        "text": "=🚨 Price Alert\n\n🪙 Coin: {{ $json.coin }}\n💰 Current price: ${{ $json.current_price }}\n\n📌 Condition:\n{{ $json.coin }} {{ $json.operator }} $ {{ $json.target_price }}\n\n✅ Your alert has been triggered!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1104,
+        -16
+      ],
+      "id": "23c19c1d-17b3-4ed5-ae6d-37f6020f9c5b",
+      "name": "Send A Notification About The Activation",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "alert_id": "={{ $('Check For Activation').item.json.alert_id }}",
+            "status": "triggered"
+          },
+          "matchingColumns": [
+            "alert_id"
+          ],
+          "schema": [
+            {
+              "id": "alert_id",
+              "displayName": "alert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "coin",
+              "displayName": "coin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "operator",
+              "displayName": "operator",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_price",
+              "displayName": "target_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1296,
+        -16
+      ],
+      "id": "38719bd0-82e3-49fa-bd1f-34539b138c81",
+      "name": "Update Status To Triggered",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Alerts": {
+      "main": [
+        [
+          {
+            "node": "Are There Any Active Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Are There Any Active Alerts?": {
+      "main": [
+        [
+          {
+            "node": "Get Prices",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Get Prices": {
+      "main": [
+        [
+          {
+            "node": "Check For Activation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check For Activation": {
+      "main": [
+        [
+          {
+            "node": "Send A Notification About The Activation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send A Notification About The Activation": {
+      "main": [
+        [
+          {
+            "node": "Update Status To Triggered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status To Triggered": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YOUR_ERROR_WORKFLOW_ID",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "YOUR_VERSION_ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "YOUR_WORKFLOW_ID",
+  "tags": []
+}

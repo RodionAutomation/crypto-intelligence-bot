@@ -1,0 +1,447 @@
+{
+  "name": "Crypto - Telegram Morning Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -224
+      ],
+      "id": "a3bc3713-fbc9-4f14-b720-31b04a8d5061",
+      "name": "Morning Digest"
+    },
+    {
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        -224
+      ],
+      "id": "8d5c0a2a-a9c6-49e8-923d-3bb168450d00",
+      "name": "🌐 Get Prices",
+      "retryOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_HTTP_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst btc = data.bitcoin ?? {};\nconst eth = data.ethereum ?? {};\nconst sol = data.solana ?? {};\n\nfunction line(name, data) {\n    const price = Number(data.usd ?? 0);\n    const change = Number(data.usd_24h_change ?? 0);\n\n    const emoji = change >= 0 ? \"🟢\" : \"🔴\";\n    const sign = change >= 0 ? \"+\" : \"\";\n\n    return `${emoji} *${name}*\n\n💵 Price: *$${price.toLocaleString()}*\n📊 24h: *${sign}${change.toFixed(2)}%*\n\n`;\n}\n\nlet message = `☀️ *CRYPTO MORNING DIGEST*\n\nGood morning! 👋\n\nHere's the latest crypto market snapshot.\n\n━━━━━━━━━━━━━━━\n\n`;\n\nmessage += line(\"BTC\", btc);\nmessage += line(\"ETH\", eth);\nmessage += line(\"SOL\", sol);\n\nmessage += `━━━━━━━━━━━━━━━\n\n📈 Trade smart and have a great day! 🚀`;\n\nreturn [\n  {\n    json: {\n      messageText: message,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -224
+      ],
+      "id": "d523a23d-b03e-4863-a931-b708e941b232",
+      "name": "📝 Build Morning Message"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1951534741,
+          "mode": "list",
+          "cachedResultName": " Users",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        -224
+      ],
+      "id": "dc06eeed-2ed5-48d5-8349-5e912da1953a",
+      "name": "👥 Get Users",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const message =\n    $(\"📝 Build Morning Message\").first().json.messageText;\n\nreturn $input.all()\n.filter(item => String(item.json.user_id || \"\").trim() !== \"\")\n.map(item => ({\n    json: {\n        row_number: item.json.row_number,\n        user_id: item.json.user_id,\n        messageText: message\n    }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -224
+      ],
+      "id": "a6a1fe96-a254-477b-b083-b21a4867aaa6",
+      "name": "📦 Prepare Broadcast"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1360,
+        -224
+      ],
+      "id": "574c9874-6dd8-4614-be3c-b80420827f73",
+      "name": "🔀 Merge Result"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.user_id }}",
+        "text": "={{ $json.messageText }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        -304
+      ],
+      "id": "b66e1050-2c9d-4f89-b2f7-1a28c0664be2",
+      "name": "📨 Send Telegram",
+      "webhookId": "YOUR_WEBHOOK_ID",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9ebfb1a1-896f-4262-a536-4b196cf32bce",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        -224
+      ],
+      "id": "27e6f330-20da-4547-bae8-14a66fceb298",
+      "name": "❓ Has Error?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9070f377-625c-4d6f-8dbf-6ac474cc8e0d",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "blocked by the user",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "2751d6c8-34b6-4153-9bca-e2ed79dbec1b",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "chat not found",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1792,
+        -224
+      ],
+      "id": "d48d0696-ba2d-4f37-a439-6fab68db2f40",
+      "name": "🚫 User Blocked?"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1951534741,
+          "mode": "list",
+          "cachedResultName": " Users",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "startIndex": "={{ $json.row_number }}"
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2240,
+        -224
+      ],
+      "id": "8fb0f451-46a7-434b-9ead-8ab1ab6db6ce",
+      "name": "🗑 Remove User",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        240
+      ],
+      "id": "6aae8571-a32f-4479-a15c-c8dd3449385a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ef0baa19-9303-484c-a212-baa77cc4b52d",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2016,
+        -224
+      ],
+      "id": "f789912a-faac-4195-a40c-50ea1f028668",
+      "name": "Row Number Exists?"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Morning Digest": {
+      "main": [
+        [
+          {
+            "node": "🌐 Get Prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Get Prices": {
+      "main": [
+        [
+          {
+            "node": "📝 Build Morning Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Build Morning Message": {
+      "main": [
+        [
+          {
+            "node": "👥 Get Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "👥 Get Users": {
+      "main": [
+        [
+          {
+            "node": "📦 Prepare Broadcast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 Prepare Broadcast": {
+      "main": [
+        [
+          {
+            "node": "📨 Send Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔀 Merge Result",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔀 Merge Result": {
+      "main": [
+        [
+          {
+            "node": "❓ Has Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 Send Telegram": {
+      "main": [
+        [
+          {
+            "node": "🔀 Merge Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ Has Error?": {
+      "main": [
+        [
+          {
+            "node": "🚫 User Blocked?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🚫 User Blocked?": {
+      "main": [
+        [
+          {
+            "node": "Row Number Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Row Number Exists?": {
+      "main": [
+        [
+          {
+            "node": "🗑 Remove User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YOUR_ERROR_WORKFLOW_ID",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "YOUR_VERSION_ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "YOUR_WORKFLOW_ID",
+  "tags": []
+}

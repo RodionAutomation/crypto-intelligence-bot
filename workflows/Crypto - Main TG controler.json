@@ -1,0 +1,2253 @@
+{
+  "name": "Crypto(3) - TG controler",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const messageText = $('Get Message From User').first().json.message.text || '';\nconst trimmedText = messageText.trim().toLowerCase();\n\n// Гілка команди /start\nif (trimmedText.startsWith('/start')) {\n  return [{\n    json: {\n      command: 'start',\n      isValid: true\n    }\n  }];\n}\n\n//Гілка команди /myalerts\nif (trimmedText.startsWith('/myalerts')) {\n  return [{\n    json: {\n      command: 'myalerts',\n      isValid: true\n    }\n  }];\n}\n\n// Гілка команди /alerthelp\nif (trimmedText.startsWith('/alerthelp')){\n  return [{\n    json: {\n      command: 'alerthelp',\n      isValid: true\n    }\n  }];\n}\n// Гілка команди /price\nif (trimmedText.startsWith('/price')) {\n  const parts = messageText.split(' ');\n  const inputTicker = parts[1] ? parts[1].toLowerCase().trim() : '';\n\n  const cryptoMap = {\n    'btc': 'bitcoin', 'bitcoin': 'bitcoin',\n    'eth': 'ethereum', 'ethereum': 'ethereum',\n    'sol': 'solana', 'solana': 'solana'\n  };\n\n  const coinId = cryptoMap[inputTicker];\n\n  return [{\n    json: {\n      command: 'price',\n      isValid: !!coinId,\n      coinId: coinId || null,\n      requestedTicker: inputTicker.toUpperCase() || 'UNKNOWN'\n    }\n  }];\n}\n\n// Гілка команди /digest\nif (trimmedText.startsWith('/digest')) {\n  return [{\n    json: {\n      command: 'digest',\n      isValid: true\n    }\n  }];\n}\n\n// Price alert\nif (trimmedText.startsWith('/alert ')) {\n\n  const parts = trimmedText.split(/\\s+/);\n\n  if (parts.length !== 4) {\n    return [{\n      json: {\n        command: 'alert',\n        isValid: false,\n        error: 'Usage: /alert btc > 70000'\n      }\n    }];\n  }\n\n  const coin = parts[1].toLowerCase();\n  const operator = parts[2];\n  const price = Number(parts[3]);\n\n  const allowedCoins = ['btc', 'eth', 'sol'];\n  const allowedOperators = ['>', '<', '>=', '<=', '='];\n\n  if (!allowedCoins.includes(coin)) {\n    return [{\n      json: {\n        command: 'alert',\n        isValid: false,\n        error: 'Coin must be BTC, ETH or SOL.'\n      }\n    }];\n  }\n\n  if (!allowedOperators.includes(operator)) {\n    return [{\n      json: {\n        command: 'alert',\n        isValid: false,\n        error: 'Operator must be >, <, >=, <= or ='\n      }\n    }];\n  }\n\n  if (isNaN(price) || price <= 0) {\n    return [{\n      json: {\n        command: 'alert',\n        isValid: false,\n        error: 'Price must be a positive number.'\n      }\n    }];\n  }\n\n  return [{\n    json: {\n      command: 'alert',\n      isValid: true,\n      coin,\n      operator,\n      targetPrice: price\n    }\n  }];\n}\n\n// Якщо написали щось інше\nreturn [{\n  json: {\n    command: 'unknown',\n    isValid: false\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        608
+      ],
+      "id": "18d548c5-1972-44ea-a95f-f1e8d74e1587",
+      "name": "Parse Command"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "55adb076-a451-4fa3-bb51-b49e93f824fc",
+              "leftValue": "={{ !!$json[\"user_id\"] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2960,
+        992
+      ],
+      "id": "0c01d06a-ed20-4dee-acab-7eee0c6e15d5",
+      "name": "If Duplicate Alert"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "user_id",
+              "lookupValue": "={{ $('Get Message From User').first().json.message.chat.id }}"
+            },
+            {
+              "lookupColumn": "coin",
+              "lookupValue": "={{ $('Parse Command').first().json.coin }}"
+            },
+            {
+              "lookupColumn": "operator",
+              "lookupValue": "={{ $('Parse Command').first().json.operator }}"
+            },
+            {
+              "lookupColumn": "target_price",
+              "lookupValue": "={{ $('Parse Command').first().json.targetPrice }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2736,
+        992
+      ],
+      "id": "e0fd50d3-8e90-4b1c-9831-94a59f745ad0",
+      "name": "Get Duplicate Alert",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "311ed467-4a46-4d01-9968-b8c637af0314",
+              "leftValue": "={{ !!$json.user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        624
+      ],
+      "id": "e38a0476-0781-4d67-bd53-6601d16021fa",
+      "name": "If User Exists"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "={{ Object.values($json)[0].usd }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1840,
+        32
+      ],
+      "id": "5df61a6a-e9da-4cf2-9465-6bea56dd1b3b",
+      "name": "Send Price Response",
+      "webhookId": "2089eb4a-c904-4083-92da-1166db392e5f",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "🔔 Price Alert Guide\n\nCreate a price alert using the following format:\n\n/alert <coin> <operator> <price>\n\nExamples:\n• /alert btc > 70000\n• /alert eth < 1800\n• /alert sol > 200\n\nSupported coins: BTC, ETH, SOL\n\nYou'll receive a notification as soon as your target price is reached. 🚀\n\nIf you want to view or delete your alerts, type /myalerts.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1616,
+        800
+      ],
+      "id": "6e3d6be2-2b66-4568-a44b-f94bce321499",
+      "name": "Send Alert Help",
+      "webhookId": "dd051de9-428b-4f71-bc7d-d737abf6cb1a",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "638c6b9c-5914-4cc1-a065-e81b5cda0367",
+              "leftValue": "={{ $json.alertCount }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2512,
+        896
+      ],
+      "id": "4a602f71-8bdb-423c-bcc3-d973245bc7a8",
+      "name": "If Alert Limit Reached (>=3)"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "❌ You already have 3 active alerts.\n\nDelete one before creating another.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2736,
+        768
+      ],
+      "id": "972a8745-ecc7-4469-a2a3-5cc941e368aa",
+      "name": "Send Limit Exceeded Notification",
+      "webhookId": "6491779a-74e2-4a0c-b61e-030564e46889",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "=ERROR!!!\n{{ $json.error }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1840,
+        1088
+      ],
+      "id": "af56c61c-e457-4114-9c87-e036d156fe37",
+      "name": "Send Alert Syntax Error Notification",
+      "webhookId": "69363b6b-ecec-4463-a1e6-32d67fbf32af",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const alerts = $input.all();\n\nconst keyboard = [];\n\nconst coinEmoji = {\n    BTC: \"₿\",\n    ETH: \"♦️\",\n    SOL: \"◎\"\n};\n\nfor (const item of alerts) {\n\n    const alert = item.json;\n\n    keyboard.push([\n        {\n            text:\n            `🗑 ${coinEmoji[alert.coin] ?? \"🪙\"} ${alert.coin} ${alert.operator} $${Number(alert.target_price).toLocaleString()}`,\n\n            callback_data:\n            `delete_alert_${alert.alert_id}`\n        }\n    ]);\n\n}\n\nkeyboard.push([\n[\n{\ntext:\"❌ Cancel\",\ncallback_data:\"cancel_delete\"\n}\n][0]\n]);\n\nreturn [\n{\njson:{\ntext:\"🗑 Select an alert to delete:\",\nreply_markup:{\ninline_keyboard:keyboard\n}\n}\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        1232
+      ],
+      "id": "fba43be9-ad5b-4d60-9581-58ca71f20909",
+      "name": "📝 Build User Alerts Message"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "alert_id": "={{ $json.alert_id }}",
+            "status": "deleted"
+          },
+          "matchingColumns": [
+            "alert_id"
+          ],
+          "schema": [
+            {
+              "id": "alert_id",
+              "displayName": "alert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "coin",
+              "displayName": "coin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "operator",
+              "displayName": "operator",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_price",
+              "displayName": "target_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        896,
+        1424
+      ],
+      "id": "a4e79768-ab91-4912-8abd-e55fd4b4baf0",
+      "name": "Change Status To Deleted",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const callback = $input.first().json.callback_query.data;\n\nconst alertId = callback.replace(\"delete_alert_\", \"\");\n\nreturn [\n  {\n    json: {\n      alert_id: alertId\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        1424
+      ],
+      "id": "efc6219e-1591-4e57-8d8d-1421c89fc038",
+      "name": "Extract Alert ID"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/botYOUR_TELEGRAM_TOKEN/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  chat_id: $('Get Message From User').item.json.callback_query.from.id,\n  text: $json.text,\n  parse_mode: \"Markdown\",\n  reply_markup: $json.reply_markup\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        1232
+      ],
+      "id": "e9853e16-0875-45dc-8361-581cf5a80313",
+      "name": "Send Alert Selection Message"
+    },
+    {
+      "parameters": {
+        "operation": "deleteMessage",
+        "chatId": "={{ $json.callback_query.from.id }}",
+        "messageId": "={{ $json.callback_query.message.message_id }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        1616
+      ],
+      "id": "f9cb2044-3271-457f-b102-b3337dd5e9ed",
+      "name": "Delete Alert Selection Message",
+      "webhookId": "1090aaaf-20bf-4ddc-8265-4a18acac2475",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Get Message From User').first().json.callback_query.id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        1232
+      ],
+      "id": "199617f2-6a97-43af-a24d-2df4f1b5fbf8",
+      "name": "Answer Callback (Menu)",
+      "webhookId": "0b62d170-f65c-4029-b2c5-0e1d68961f35",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Get Message From User').first().json.callback_query.id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        1424
+      ],
+      "id": "ce017038-ed73-4d69-b56c-70146c74512b",
+      "name": "Answer Callback (Delete)",
+      "webhookId": "0b62d170-f65c-4029-b2c5-0e1d68961f35",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Get Message From User').first().json.callback_query.id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        656,
+        1616
+      ],
+      "id": "4f8d26b4-a438-4f68-a14c-1b54a1db5c83",
+      "name": "Answer Callback (Cancel)",
+      "webhookId": "0b62d170-f65c-4029-b2c5-0e1d68961f35",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "price",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "51190353-fffe-4aa5-8904-67dd37d007d9"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "40910b69-dbdf-49d9-bed0-4edb4c06dfe0",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "digest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "400b244b-2261-427c-8f67-7449ae60446c",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "unknown",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a867a127-14cc-4e10-a2f3-866882f016a1",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "aacc454e-9806-4f8d-8769-9ae9b7636fd9",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "alerthelp",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "aa85ee5f-4dc4-4530-b706-7b1adc441334",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "alert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a34cfec0-6ec1-4fe4-b6bd-832013836d0a",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "myalerts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        528
+      ],
+      "id": "b88fc96c-b683-4a41-aff8-59d0c016bd71",
+      "name": "Command Switch"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.coingecko.com/api/v3/simple/price?ids={{ $('Parse Command').item.json.coinId }}&vs_currencies=usd&include_24hr_change=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1616,
+        32
+      ],
+      "id": "0432b265-ee3f-40a8-bcf5-b263e505ca7b",
+      "name": "Get Coin Price",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_HTTP_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "user_id",
+              "lookupValue": "={{ $('Get Message From User').item.json.callback_query.from.id }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        1232
+      ],
+      "id": "aee12b0c-6f3e-410b-9621-167a7ee93179",
+      "name": "Get Alerts For Callback",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "alert_id",
+              "lookupValue": "={{ $json.alert_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        1424
+      ],
+      "id": "09542e06-f363-4c94-8568-fc189f29b60b",
+      "name": "Get Alert To Delete",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        992
+      ],
+      "id": "c4e9e697-fcca-4dfb-8235-225e62dda895",
+      "name": "Get Message From User",
+      "webhookId": "tg-webhook-interactive-bot",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "delete_alert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c62dd726-32d6-4605-a9e4-51a9fbd22c55"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "D. Alerts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c5b6c4e8-27dd-4536-8062-bf1060d98d5a",
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "delete_alert_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "D. A. by ID"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1a552d6d-6d57-4683-9a60-e2cb59efe835",
+                    "leftValue": "={{ $json.callback_query.data }}",
+                    "rightValue": "cancel_delete",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        1408
+      ],
+      "id": "7d3da9bc-8b3a-4782-8f21-05de58764c12",
+      "name": "Callback Switch"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/botYOUR_TELEGRAM_TOKEN/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  chat_id: $('Get Message From User').item.json.callback_query.from.id,\n  text: \"🗑 Alert removed successfully\",\n  parse_mode: \"Markdown\"\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        1424
+      ],
+      "id": "cd43cb63-bb88-4cd0-baed-c5c67a1df792",
+      "name": "Alert Deletion Confirmation Message"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1951534741,
+          "mode": "list",
+          "cachedResultName": " Users",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Get Message From User').item.json.message.from.id }}"
+          },
+          "matchingColumns": [
+            "user_id"
+          ],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        928,
+        720
+      ],
+      "id": "5faeb19f-1135-4aaa-8952-ddb058d2d2fb",
+      "name": "Add User",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1951534741,
+          "mode": "list",
+          "cachedResultName": " Users",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "user_id",
+              "lookupValue": "={{ $('Get Message From User').first().json.message.from.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        496,
+        624
+      ],
+      "id": "c7acc5bf-e84e-4767-9a49-c84be91dec02",
+      "name": "Fetch User From DB",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "663066de-ca20-4dfb-ad22-28f7d21f50d6",
+              "leftValue": "={{$json.callback_query}}",
+              "rightValue": "delete_alert",
+              "operator": {
+                "type": "object",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        272,
+        992
+      ],
+      "id": "61c112fc-9f10-45ea-b691-667ad6893667",
+      "name": "If Callback/Message"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": " 👋 *Welcome to Crypto Intelligence Bot!*\n\nYour personal AI-powered crypto assistant.\n\nWith this bot you can quickly check cryptocurrency prices and receive daily market insights.\n\n━━━━━━━━━━━━━━━\n\n📌 *Available Commands*\n\n💰 `/price btc`\nGet the current price and 24h change for Bitcoin.\n\nYou can also use:\n• `/price eth`\n• `/price sol`\n\n☀️ `/digest`\nReceive the latest crypto market digest instantly, including:\n• BTC, ETH & SOL prices\n• 24h market performance\n• Market overview\n\n━━━━━━━━━━━━━━━\n\n🚀 More features are coming soon:\n• 🔔 Price Alerts\n• ⭐ Watchlist\n• 📰 AI News Digest\n• 😱 Fear & Greed Index\n• 📅 Economic Calendar\n• 🤖 AI Market Analysis\n• 📈 Portfolio Tracker\n\nHappy trading! 📈",
+        "replyMarkup": "replyKeyboard",
+        "replyKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "/price btc",
+                    "additionalFields": {}
+                  },
+                  {
+                    "text": "/price eth",
+                    "additionalFields": {}
+                  },
+                  {
+                    "text": "/price sol",
+                    "additionalFields": {}
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "/digest",
+                    "additionalFields": {}
+                  },
+                  {
+                    "text": "/alerthelp",
+                    "additionalFields": {}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "replyKeyboardOptions": {
+          "resize_keyboard": true
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1616,
+        608
+      ],
+      "id": "ef3ad9aa-91a3-4270-a49d-f79867e6543f",
+      "name": "Send Welcome Message",
+      "webhookId": "ada86b84-b44f-4762-8069-4e8fa8effa30",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "=❌ Invalid Request. Please use /price btc or (/price eth /price sol)",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1616,
+        416
+      ],
+      "id": "f80db343-a74e-4d2b-a869-6b284b18d63a",
+      "name": "Send Invalid Command Message",
+      "webhookId": "2089eb4a-c904-4083-92da-1166db392e5f",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ef0baa19-9303-484c-a212-baa77cc4b52d",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2736,
+        224
+      ],
+      "id": "d73ee003-c174-4356-ae70-eb8cac5677d9",
+      "name": "User Found in DB?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6617769d-056c-488d-8c4f-feda518a9e9e",
+              "leftValue": "={{ $('Parse Command').item.json.isValid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1616,
+        992
+      ],
+      "id": "d4dd7b59-9a28-4649-a132-28902cebe1c8",
+      "name": "Is Alert Valid?"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "user_id",
+              "lookupValue": "={{ $('Get Message From User').first().json.message.chat.id }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1840,
+        896
+      ],
+      "id": "bcc26a9e-3fed-4de2-ac9e-af3d58f0624a",
+      "name": "Get User Alerts",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const alerts = $('Get User Alerts').all();\n\nreturn [\n  {\n    json: {\n      alertCount: alerts.length\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        896
+      ],
+      "id": "49fa55b3-f22b-4ef1-9705-de5074531f3c",
+      "name": "Count User Alerts"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "user_id",
+              "lookupValue": "={{ $('Get Message From User').first().json.message.chat.id }}"
+            },
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1616,
+        1280
+      ],
+      "id": "bf3bb3be-d4de-4353-907d-8719c5f78727",
+      "name": "Get Active Alerts",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const alerts = $input.all();\n\nif (alerts.length === 0) {\n  return [\n    {\n      json: {\n        messageText: \"📭 *You don't have any active price alerts.*\"\n      }\n    }\n  ];\n}\n\nconst coinEmoji = {\n  BTC: \"₿\",\n  ETH: \"♦️\",\n  SOL: \"◎\"\n};\n\nlet text = \"🔔 *Your Active Price Alerts*\\n\\n\";\n\nfor (const item of alerts) {\n  const alert = item.json;\n\n  const coin = String(alert.coin).toUpperCase();\n  const emoji = coinEmoji[coin] ?? \"🪙\";\n\n  const operator = alert.operator;\n  const price = Number(alert.target_price).toLocaleString(\"en-US\");\n\n  text += `${emoji} *${coin}*   ${operator}   *$${price}*\\n`;\n}\n\ntext += `\\n━━━━━━━━━━━━━━━`;\ntext += `\\n*Total alerts:* ${alerts.length}`;\n\nreturn [\n  {\n    json: {\n      messageText: text\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        1280
+      ],
+      "id": "eb3fc231-3072-432c-9a20-88c0e147fac8",
+      "name": "Build Alert List Message"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "=✅ Alert created!\n\n{{ $('Parse Command').item.json.coin }} {{ $('Parse Command').item.json.operator }} {{ $('Parse Command').item.json.targetPrice }}\n\nWe'll notify you once the target price is reached. ",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3408,
+        1088
+      ],
+      "id": "fa8406a8-0bbc-475b-bb81-57ec52082ec7",
+      "name": "Send Alert Created Message",
+      "webhookId": "6491779a-74e2-4a0c-b61e-030564e46889",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "={{ $json.messageText }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🗑 Delete Alert",
+                    "additionalFields": {
+                      "callback_data": "delete_alert"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2064,
+        1280
+      ],
+      "id": "9c2cb363-e381-4d48-80ef-8130afbc6034",
+      "name": "Send Alert List Massage",
+      "webhookId": "4ba13fd7-78a6-4aae-a588-33fdba546c10",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const alerts = $input.all();\n\nlet maxId = 0;\n\nfor (const item of alerts) {\n\n    const id = item.json.alert_id;\n\n    if (!id) continue;\n\n    const number = parseInt(id.replace('A', ''));\n\n    if (!isNaN(number) && number > maxId) {\n        maxId = number;\n    }\n}\n\nconst nextId =\n    'A' + String(maxId + 1).padStart(6, '0');\n\nreturn [{\n    json: {\n        alert_id: nextId\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        896
+      ],
+      "id": "007be7dc-c3a1-4447-9f8f-18f90232b63c",
+      "name": "Create Id For Alert"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "⚠️ This alert already exists.\n\nNo duplicate alert has been created.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3184,
+        896
+      ],
+      "id": "920b22c4-a9ea-420f-bdb0-f923f573b01a",
+      "name": "Send A Message Alert Already Exists",
+      "webhookId": "6491779a-74e2-4a0c-b61e-030564e46889",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1941449760,
+          "mode": "list",
+          "cachedResultName": "Price Alert",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "coin": "={{ $('Parse Command').item.json.coin }}",
+            "operator": "={{ $('Parse Command').item.json.operator }}",
+            "target_price": "={{ $('Parse Command').item.json.targetPrice }}",
+            "created_at": "={{ new Date().toISOString() }}",
+            "user_id": "={{ $('Get Message From User').first().json.message.chat.id }}",
+            "alert_id": "={{ $('Create Id For Alert').item.json.alert_id }}",
+            "status": "active"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "alert_id",
+              "displayName": "alert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "coin",
+              "displayName": "coin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "operator",
+              "displayName": "operator",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_price",
+              "displayName": "target_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3184,
+        1088
+      ],
+      "id": "df89f7e6-6c7b-45a5-b20a-45bc1d655084",
+      "name": "Save Alert To DB",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst btc = data.bitcoin ?? {};\nconst eth = data.ethereum ?? {};\nconst sol = data.solana ?? {};\n\nfunction line(name, data) {\n    const price = Number(data.usd ?? 0);\n    const change = Number(data.usd_24h_change ?? 0);\n\n    const emoji = change >= 0 ? \"🟢\" : \"🔴\";\n    const sign = change >= 0 ? \"+\" : \"\";\n\n    return `${emoji} *${name}*\n\n💵 Price: *$${price.toLocaleString()}*\n📊 24h: *${sign}${change.toFixed(2)}%*\n\n`;\n}\n\nlet message = `📊 *CRYPTO DIGEST*\n\nHere is the latest overview of the cryptocurrency market.\n\n━━━━━━━━━━━━━━━\n\n`;\n\nmessage += line(\"BTC\", btc);\nmessage += line(\"ETH\", eth);\nmessage += line(\"SOL\", sol);\n\nmessage += `━━━━━━━━━━━━━━━\n\n📈 Latest market snapshot.\n🚀 Happy trading!`;\n\nreturn [\n  {\n    json: {\n      messageText: message,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        224
+      ],
+      "id": "f53b1644-f460-4bff-8d2e-86bf493f2417",
+      "name": "Build Morning Message"
+    },
+    {
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1616,
+        224
+      ],
+      "id": "5ee005ff-5740-4d5f-b09d-e4e925983ad9",
+      "name": "Get Prices for digest",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_HTTP_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9ebfb1a1-896f-4262-a536-4b196cf32bce",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2288,
+        224
+      ],
+      "id": "b24e529b-6197-475d-bf85-162ac9101f68",
+      "name": "Has Error?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Get Message From User').first().json.message.chat.id }}",
+        "text": "={{ $json.messageText }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2064,
+        224
+      ],
+      "id": "4a962aa6-7d7d-4bf7-a457-f33aa5cb38d2",
+      "name": "Send Telegram",
+      "webhookId": "ac9199ea-9243-4799-ab4f-f3999a08bdc1",
+      "retryOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_TELEGRAM_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9070f377-625c-4d6f-8dbf-6ac474cc8e0d",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "blocked by the user",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "2751d6c8-34b6-4153-9bca-e2ed79dbec1b",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "chat not found",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2512,
+        224
+      ],
+      "id": "7dab3f0a-9d9a-47d1-bc85-5cf95c6a4cee",
+      "name": "User Blocked?"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_SPREADSHEET_NAME",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1951534741,
+          "mode": "list",
+          "cachedResultName": " Users",
+          "cachedResultUrl": "YOUR_SPREADSHEET_URL"
+        },
+        "startIndex": "={{ $json.row_number }}"
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2960,
+        224
+      ],
+      "id": "fd79bdf1-c626-494a-8dce-7b12b56276b5",
+      "name": "Remove User",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Parse Command": {
+      "main": [
+        [
+          {
+            "node": "Command Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Duplicate Alert": {
+      "main": [
+        [
+          {
+            "node": "Send A Message Alert Already Exists",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Alert To DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Duplicate Alert": {
+      "main": [
+        [
+          {
+            "node": "If Duplicate Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If User Exists": {
+      "main": [
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Alert Limit Reached (>=3)": {
+      "main": [
+        [
+          {
+            "node": "Send Limit Exceeded Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Duplicate Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Build User Alerts Message": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Selection Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Change Status To Deleted": {
+      "main": [
+        [
+          {
+            "node": "Alert Deletion Confirmation Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Alert ID": {
+      "main": [
+        [
+          {
+            "node": "Get Alert To Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Alert Selection Message": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback (Menu)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Alert Selection Message": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback (Cancel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Command Switch": {
+      "main": [
+        [
+          {
+            "node": "Get Coin Price",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Prices for digest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Invalid Command Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Welcome Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Alert Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Alert Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Active Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Coin Price": {
+      "main": [
+        [
+          {
+            "node": "Send Price Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Alerts For Callback": {
+      "main": [
+        [
+          {
+            "node": "📝 Build User Alerts Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Alert To Delete": {
+      "main": [
+        [
+          {
+            "node": "Change Status To Deleted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Message From User": {
+      "main": [
+        [
+          {
+            "node": "If Callback/Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback Switch": {
+      "main": [
+        [
+          {
+            "node": "Get Alerts For Callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Alert ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete Alert Selection Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Deletion Confirmation Message": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback (Delete)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add User": {
+      "main": [
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch User From DB": {
+      "main": [
+        [
+          {
+            "node": "If User Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Callback/Message": {
+      "main": [
+        [
+          {
+            "node": "Fetch User From DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Found in DB?": {
+      "main": [
+        [
+          {
+            "node": "Remove User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Alert Valid?": {
+      "main": [
+        [
+          {
+            "node": "Get User Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Alert Syntax Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Alerts": {
+      "main": [
+        [
+          {
+            "node": "Create Id For Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count User Alerts": {
+      "main": [
+        [
+          {
+            "node": "If Alert Limit Reached (>=3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Alerts": {
+      "main": [
+        [
+          {
+            "node": "Build Alert List Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Alert List Message": {
+      "main": [
+        [
+          {
+            "node": "Send Alert List Massage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Id For Alert": {
+      "main": [
+        [
+          {
+            "node": "Count User Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Alert To DB": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Created Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Morning Message": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prices for digest": {
+      "main": [
+        [
+          {
+            "node": "Build Morning Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Error?": {
+      "main": [
+        [
+          {
+            "node": "User Blocked?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram": {
+      "main": [
+        [
+          {
+            "node": "Has Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Blocked?": {
+      "main": [
+        [
+          {
+            "node": "User Found in DB?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "YOUR_ERROR_WORKFLOW_ID",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "69dcc706-c0ac-497f-b63b-b829724ee442",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "YOUR_WORKFLOW_ID",
+  "tags": []
+}
