@@ -1,8 +1,8 @@
 # 🤖 Crypto Intelligence Bot
 
-A production-ready cryptocurrency Telegram bot built entirely in **n8n**.
+A cryptocurrency Telegram bot built with n8n automation workflows.
 
-This project demonstrates how to build a scalable Telegram bot using low-code automation while following production-oriented workflow design, centralized error handling, retry strategies, and modular architecture.
+This project demonstrates how to build a modular Telegram bot using n8n, JavaScript and external APIs while following clean workflow architecture, retry strategies and centralized error handling.
 
 The bot allows users to monitor cryptocurrency prices, create personalized alerts, receive scheduled market digests, and manage their alerts directly inside Telegram.
 
@@ -30,12 +30,12 @@ The bot allows users to monitor cryptocurrency prices, create personalized alert
 ### 🌅 Market Digest
 - Morning market digest
 - Evening market digest
-- Latest BTC / ETH / SOL overview
+- Latest BTC, ETH and SOL market overview
 - Daily market summary
 
 ### 👤 User Management
 - Automatic user registration
-- Automatic cleanup of blocked Telegram users
+- Automatic removal of users who blocked the bot
 - User existence validation
 
 ### ⚙ Reliability
@@ -50,7 +50,7 @@ The bot allows users to monitor cryptocurrency prices, create personalized alert
 
 The project is split into multiple workflows for easier maintenance.
 
-| Workflow | Purpose |
+| Workflow | Responsibility |
 |-----------|---------|
 | Main Workflow | Handles all Telegram commands and user interaction |
 | Alert Checker | Monitors active alerts and triggers notifications |
@@ -62,17 +62,11 @@ The project is split into multiple workflows for easier maintenance.
 
 # 🛠 Technologies
 
-### Core Platform
 - n8n
 - JavaScript
-
-### APIs
 - Telegram Bot API
 - CoinGecko API
-
-### Storage
-- Google Sheets(
-A temporary solution instead of PostgreSQL)
+- Google Sheets(used as a lightweight database for this demo project)
 
 ### n8n Nodes
 - HTTP Request
@@ -96,7 +90,7 @@ A temporary solution instead of PostgreSQL)
 - Duplicate detection
 - Dynamic message generation
 - Scheduled automation
-- Conditional branching
+- Workflow branching
 
 ---
 
@@ -115,8 +109,9 @@ Crypto-Intelligence-Bot/
 ├── docs/
 │   └── architecture.png
 │
-├── assets/
+├── images/
 │   └── bot-logo.png
+│   └── workflow-overview.png
 │
 ├── README.md
 ├── LICENSE
@@ -127,7 +122,7 @@ Crypto-Intelligence-Bot/
 
 # 📸 Workflow Architecture
 
-![Workflow Architecture](docs/architecture(main).png)
+![Workflow Architecture](docs/main-workflow.png)
 
 ---
 
@@ -151,17 +146,17 @@ The project uses a dedicated Error Trigger workflow that:
 - Continue using Error Output where appropriate
 - Validation before every critical operation
 - User-friendly error messages
-
+- Automatic cleanup of invalid Telegram users
 ---
 
 # 🚀 Future Improvements
 
+- AI News Digest
 - Portfolio tracking
 - Watchlist
 - Fear & Greed Index
 - Economic Calendar
 - AI Market Analysis
-- AI News Digest
 - Multi-language support
 
 ---
